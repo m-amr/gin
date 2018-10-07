@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/codegangsta/envy/lib"
@@ -226,7 +225,7 @@ func EnvAction(c *cli.Context) {
 }
 
 func build(builder gin.Builder, runner gin.Runner, logger *log.Logger) {
-	logger.Println("Building...")
+	logger.Println("Building Project...")
 
 	if notifications {
 		notifier.Push("Build Started!", "Building "+builder.Binary()+"...", "", notificator.UR_NORMAL)
@@ -261,6 +260,8 @@ func build(builder gin.Builder, runner gin.Runner, logger *log.Logger) {
 type scanCallback func(path string)
 
 func scanChanges(watchPath string, excludeDirs []string, allFiles bool, cb scanCallback) {
+	fileChanges := false
+
 	for {
 		filepath.Walk(watchPath, func(path string, info os.FileInfo, err error) error {
 			if path == ".git" && info.IsDir() {
@@ -278,13 +279,19 @@ func scanChanges(watchPath string, excludeDirs []string, allFiles bool, cb scanC
 			}
 
 			if (allFiles || filepath.Ext(path) == ".go") && info.ModTime().After(startTime) {
-				cb(path)
-				startTime = time.Now()
-				return errors.New("done")
+				fileChanges = true
+				startTime = info.ModTime()
+				logger.Printf("file changes: %s at %s", path, info.ModTime().String())
 			}
 
 			return nil
 		})
+
+		if fileChanges{
+			fileChanges = false
+			cb("")
+		}
+
 		time.Sleep(500 * time.Millisecond)
 	}
 }
